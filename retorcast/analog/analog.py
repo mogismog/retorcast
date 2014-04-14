@@ -2,15 +2,18 @@
 # The module that does most of the heavy lifting
 # Written by F.Alvarez, 1/2014
 
+from datetime import timedelta
+
 import numpy as np
-from retorcast.forecast import get_forecast_sigtor,get_bias_corrected_forecast_sigtor
+
+from retorcast.forecast import get_bias_corrected_forecast_sigtor
 from training import get_training_data,get_pct
 from verification import get_verification_data,get_climo_data
 from remapping import remap_probs,prob_members,fcst_quants
 from retorcast.plot import plot_probs,plot_probs_timespan
 from retorcast.utils import config_setup,get_analog_dates
 from fortran_routines import rank_analog,rank_analog_pct
-from datetime import timedelta
+
 
 def generate_probabilities(forecastDate,leadtime,**kwargs):
 
