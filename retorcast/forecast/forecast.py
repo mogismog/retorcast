@@ -14,9 +14,11 @@
 
 """
 
-import pygrib as pgb
 import numpy as np
-from analog.bias_correction import correct_bias
+
+import pygrib as pgb
+from retorcast.analog.bias_correction import correct_bias
+
 
 def get_fcst_06shear(date,dir_name,beginning_forecast_hour,ending_forecast_hour\
                         ,maxlat,minlat,maxlon,minlon):
