@@ -37,7 +37,7 @@
 
 import sys
 from datetime import datetime
-from retorcast import generate_probabilities,multi_plot_analog
+from retorcast.analog import generate_probabilities,multi_plot_analog
 
 if len(sys.argv) < 3 or len(sys.argv) > 3:
     raise Exception('\nUsage:\n python generate_fcsts.py YYYYMMDD00 lead_time_in_days\n\nTo run all forecasts (Days 1-10) for the current date, use:\n python generate_fcsts.py today all')
@@ -65,5 +65,5 @@ try:
             #multi_plot_analog(fdate,lead_date)
             
 except AttributeError:
-    generate_probabilities(fdate,lead_time,use_pct=True)
-    #multi_plot_analog(fdate,lead_time)
+    #generate_probabilities(fdate,lead_time,use_pct=True)
+    multi_plot_analog(fdate,lead_time)
