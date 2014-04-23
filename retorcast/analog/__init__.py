@@ -1,2 +1,2 @@
-__all__ = ['generate_probabilities','multi_plot_analog']
-from analog import generate_probabilities,multi_plot_analog
+__all__ = ['generate_probabilities','evolution_analog','all_fcsts_analog']
+from analog import generate_probabilities,evolution_analog,all_fcsts_analog

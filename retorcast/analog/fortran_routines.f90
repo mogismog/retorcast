@@ -309,6 +309,138 @@ return
 
 end Subroutine rank_analog_pct
 
+Subroutine rank_analog_additive(trainField,fcstField,svrField,&
+     trainnum,members,n_members,iNum,jNum,&
+     startLat,endLat,startLon,endLon,allLats,allLons,window,n_vars,weights,outProbs)
+INTEGER, INTENT(IN) :: iNum,jNum,startLat,endLat,startLon,endLon,window,n_members,trainnum
+integer, intent(in) :: n_vars
+real, intent(IN), dimension(iNum) :: allLats
+real, intent(IN), dimension(jNum) :: allLons
+real, intent(IN), dimension(n_vars) :: weights
+integer, intent(in), dimension(n_members) :: members
+real, INTENT(IN), DIMENSION(iNum,jNum) :: fcstField
+real, INTENT(IN), DIMENSION(trainnum,iNum,jNum) :: trainField,svrField
+real, intent(out), dimension(n_members,iNum,jNum) :: outProbs
+
+! --- Now, some other variables we'll need
+integer :: i,j,np,nmem,startLatIdx,startLonIdx,endLonIdx,endLatIdx,n_grdpts
+real, DIMENSION(:,:,:),allocatable :: ranks
+real, DIMENSION(:,:,:),allocatable :: allData
+integer, DIMENSION(:),allocatable :: finalRanks,dummyIdx,dummy_finalRanks,dummy_ranks
+real, dimension(:,:),allocatable :: trainData
+real, dimension(:), allocatable :: dummy_array,rankDiffs
+
+!f2py intent(in) iNum,jNum,trainnum,startLat,endLat,startLon,endLon,window,allLats,allLons,trainField,svrField
+!f2py intent(in) n_members,members,fcstField
+!f2py depend(iNum) allLats
+!f2py depend(jNum) allLons
+!f2py depend(n_members) members
+!f2py depend(iNum,jNum) fcstField
+!f2py depend(trainnum,iNum,jNum) trainField,svrField
+!f2py intent(out) outProbs
+!f2py depend(n_members,iNum,jNum) outProbs
+
+outProbs(:,:,:) = -9999.9
+
+! --- Get latitude indices to iterate over
+do i = 1,iNum
+   if (allLats(i) .eq. startLat) then
+      startLatIdx = i
+   elseif (allLats(i) .eq. endLat) then
+      endLatIdx = i
+   end if
+end do
+
+! --- Get longitude indices to iterate over
+do j = 1,jNum
+   if (allLons(j) .eq. startLon) then
+      startLonIdx = j
+   elseif (allLons(j) .eq. endLon) then
+      endLonIdx = j
+   end if
+end do
+
+! --- Start big coefficient loop
+n_grdpts = ((window*2)+1)*((window*2)+1)
+
+! --- Let's allocate some arrays
+allocate(allData(trainnum+1,iNum,jNum)) ! --- train data + forecast data
+allocate(ranks(trainnum+1,iNum,jNum)) ! --- Array of rankings
+allocate(dummy_ranks(trainnum+1)) ! --- temporary ranking array
+allocate(dummy_array(trainnum+1)) ! --- temporary data array
+allocate(trainData(trainnum+1,((window*2)+1)*((window*2)+1))) ! --- 2-D training data
+allocate(rankDiffs(trainnum)) ! --- mean absolute difference of ranks
+allocate(dummy_finalRanks(trainnum)) ! --- rankings of rankDiffs array
+allocate(finalRanks(trainnum)) ! --- rankings of rankDiffs array
+allocate(dummyIdx(trainnum)) ! --- indices of training dates
+
+! --- We need to put the training and fcst data in one array
+allData(:trainnum,:,:) = trainField(:,:,:) ! --- Training data
+allData(trainnum+1,:,:) = fcstField(:,:) ! --- Forecast data
+
+! --- Ranking each grid point in this loop
+do j = 1,jNum
+   do i = 1,iNum
+      dummy_array(:) = allData(:,i,j)
+      dummy_ranks(:)=0
+      call real_rank(dummy_array,size(dummy_array),dummy_ranks)
+      call ties(dummy_ranks,dummy_array,size(dummy_array),ranks(:,i,j))
+   end do
+end do
+
+
+! --- Now time to find ranking differences at each grid point given a window of grid points
+do j = startLonIdx,endLonIdx
+   do i = startLatIdx,endLatIdx
+
+      rankDiffs(:) = 999999
+      ! --- First, extract data
+      trainData(:,:) = reshape(ranks(:,i-window:i+window,j-window:j+window),(/trainnum+1,n_grdpts/))
+
+      ! --- Find sum of absolute value of rank differences
+      do np = 1,trainnum
+         rankDiffs(np) = sum(abs(trainData(np,:)-trainData(trainnum+1,:)),dim=1)
+      end do
+
+      ! --- Ranking the ranked diffs to make it easier to get probabilities
+      call real_rank(rankDiffs,size(rankDiffs),dummy_finalRanks)
+      do np = 1,size(dummy_finalRanks)
+         finalRanks(dummy_finalRanks(np)) = np
+      end do
+
+      !print*,rankDiffs(minloc(finalRanks(:dumbuffer))),rankDiffs(maxloc(finalRanks(:dumbuffer)))
+      ! --- Now we find the probabilities
+      do nmem = 1,n_members
+         outProbs(nmem,i,j) = (sum( svrField(:,i,j),dim=1,&
+              mask= (finalRanks(:) .le. members(nmem) )) &
+              / real(members(nmem))) * 100.
+      end do
+   end do
+end do
+
+! --- Time to deallocate those arrays
+deallocate(allData) ! --- train data + forecast data
+
+deallocate(ranks) ! --- Array of rankings
+
+deallocate(dummy_ranks) ! --- temporary ranking array
+
+deallocate(trainData) ! --- 2-D training data
+
+deallocate(rankDiffs) ! --- mean absolute difference of ranks
+
+deallocate(dummy_finalRanks) ! --- rankings of rankDiffs array
+
+deallocate(finalRanks) ! --- rankings of rankDiffs array
+
+deallocate(dummyIdx) ! --- indices of training dates
+
+deallocate(dummy_array) ! --- temporary data array
+
+return
+
+end Subroutine rank_analog_additive
+
 
 Subroutine real_rank (XDONT, NOBS, IRNGT)
 ! __________________________________________________________

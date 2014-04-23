@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
-import numpy as np
 from datetime import datetime,timedelta
 
+import numpy as np
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-from retorcast.forecast import get_fcst_plot_06shear,get_fcst_plot_data,get_hgt_plot_data,get_fcst_plot_apcp,get_fcst_plot_cdf_06shear,get_fcst_plot_cdf_data
+from ..forecast import get_fcst_plot_data,get_hgt_plot_data,get_fcst_plot_apcp,get_fcst_plot_cdf_06shear,get_fcst_plot_cdf_data
 matplotlib.rcParams['lines.linewidth'] = .25
 
 def plot_probs(forecastDate,leadtime,probs,image_dir,maxlat,minlat,maxlon,minlon,fcst_minlat,\
@@ -486,6 +487,8 @@ def plot_probs_timespan(forecastDate,leadtime,probs,image_dir,maxlat,minlat,maxl
         ax_title = 'Lead-time Day +{0}'.format(idx)
         ax = fig1.add_subplot(2,5,(11-idx))
         ax.set_title(ax_title,fontsize=9)
+        if idx == 1:
+            ax.text(0.99,-0.060,'NOAA/ESRL/PSD and F. Alvarez (St. Louis U.)',ha='right',transform=ax.transAxes,fontsize=9)
         m = Basemap(llcrnrlon=fcst_minlon,llcrnrlat=fcst_minlat,urcrnrlon=fcst_maxlon,urcrnrlat=fcst_maxlat,projection='mill',resolution='l')
         #m.fillcontinents(color='beige')
         x, y = m(lns, lts)
@@ -505,6 +508,76 @@ def plot_probs_timespan(forecastDate,leadtime,probs,image_dir,maxlat,minlat,maxl
 
     plt.tight_layout()
     plt.savefig('{0}tornado_10day_panel_{1}_day{2}.png'.format(image_dir,forecastDate.strftime("%Y%m%d"),leadtime),dpi=200)
+    plt.clf()
+    plt.close()
+  
+def plot_probs_allfcsts(forecastDate,probs,image_dir,maxlat,minlat,maxlon,minlon,fcst_minlat,\
+        fcst_maxlat,fcst_minlon,fcst_maxlon,**kwargs):
+    """
+        plot_probs(forecastDate,leadtime,probs,image_dir,**kwargs)
+  
+      A function that plots out the forecast probabilities trained on a larger ROI on a single panel.
+        
+        Required arguments:
+            forecastDate - some datetime object, the date of the forecast initialization
+            leadtime - lead time for the forecast, from 12z-12z (so leadtime=1 is 12z-36z)        
+            probs - some 2-D numpy array of forecast probabilities [0,100]
+            image_dir - path to which the images are saved
+            minlat,maxlat,minlon,maxlon - forecast domain
+        Optional Arguments:
+            radius - some radius for the tornado probabilities (default = 240km)  
+    """
+    radius = kwargs.get('radius',240)     
+
+
+    lns = np.arange(minlon,maxlon+1)
+    lts = np.arange(minlat,maxlat+1)
+    lns,lts = np.meshgrid(lns,lts)
+
+
+    fig1 = plt.figure(figsize=(14.5,6.5))
+    title = 'Tornado probabilities (EF1+), {0} km ROI, 10-Day Forecast'.format(radius,)
+        #'Initialization time = {0} UTC'.format(forecastDate)
+    fig1.suptitle(title,fontsize = 14)
+    colorst = ['BurlyWood','LightGray','LightSkyBlue','LightGreen','Green','Gold',\
+               'Orange','Red','Plum','Orchid']
+    
+    if radius == 80:
+        clevs=[1,2,3,4,5,7,10,12,15,20,25]
+    elif radius == 160:
+        clevs=[2,5,7,10,12,15,20,25,30,35,40]
+    else:
+        clevs=[5,10,15,20,25,30,35,40,45,50,60]
+    
+    # ---- make first plot, the probability forecast
+    
+    for idx in xrange(1,11,1):
+        fdattim_str = (forecastDate+timedelta(days=int(idx)-1)).strftime("%Y-%m-%d 12 UTC")
+        fdattim2_str = (forecastDate+timedelta(days=int(idx))).strftime("%Y-%m-%d 12 UTC")
+        ax_title = '{} - {}'.format(fdattim_str,fdattim2_str)
+        ax = fig1.add_subplot(2,5,(idx))
+        ax.set_title(ax_title,fontsize=8)
+        if idx == 10:
+            ax.text(0.99,-0.060,'NOAA/ESRL/PSD and F. Alvarez (St. Louis U.)',ha='right',transform=ax.transAxes,fontsize=9)
+        m = Basemap(llcrnrlon=fcst_minlon,llcrnrlat=fcst_minlat,urcrnrlon=fcst_maxlon,urcrnrlat=fcst_maxlat,projection='mill',resolution='l')
+        #m.fillcontinents(color='beige')
+        x, y = m(lns, lts)
+        if (probs[idx-1,...].reshape(-1).max() < 0.):
+            CS3 = m.contourf(x,y,probs[idx-1,...],levels=[-1,0],colors=['DarkGray','DarkGray'],cmap=None,extend='min',alpha=.75)
+        CS1 = m.contour(x,y,probs[idx-1,...],levels=clevs,linewidth=0.3,colors='k',cmap=None)
+        CS2 = m.contourf(x,y,probs[idx-1,...],levels=clevs,colors=colorst,cmap=None,extend='max')
+        m.drawcoastlines(linewidth=.5)
+        m.drawstates(linewidth=.5)
+        m.drawcountries(linewidth=.5)   
+        
+    cax = fig1.add_axes([0.25,0.06,0.5,0.03])
+    cbar = fig1.colorbar(CS2,extend='neither', \
+    orientation='horizontal',cax=cax,drawedges=True,ticks=clevs,format='%g')
+    cbar.ax.tick_params(labelsize=8)
+    cax.set_xlabel('Forecast tornado probability (%)',fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig('{0}tornado_10day_panel_{1}_allfcsts.png'.format(image_dir,forecastDate.strftime("%Y%m%d")),dpi=200)
     plt.clf()
     plt.close()
   

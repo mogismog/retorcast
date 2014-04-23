@@ -6,12 +6,13 @@ from datetime import timedelta
 
 import numpy as np
 
-from retorcast.forecast import get_bias_corrected_forecast_sigtor
+from ..forecast import get_bias_corrected_forecast_sigtor
+
 from training import get_training_data,get_pct
 from verification import get_verification_data,get_climo_data
 from remapping import remap_probs,prob_members,fcst_quants
-from retorcast.plot import plot_probs,plot_probs_timespan
-from retorcast.utils import config_setup,get_analog_dates
+from ..plot import plot_probs,plot_probs_allfcsts,plot_probs_timespan
+from ..utils import config_setup,get_analog_dates
 from fortran_routines import rank_analog,rank_analog_pct
 
 
@@ -129,7 +130,7 @@ def generate_probabilities(forecastDate,leadtime,**kwargs):
     print "All done!"
     
 
-def multi_plot_analog(forecastDate,leadtime,):
+def evolution_analog(forecastDate,leadtime,):
     
     # --- First, set up all the vars from the config file
     forecast_dir,reforecast_dir,old_forecasts_dir,tordata_dir,cdf_dir,image_dir,\
@@ -141,7 +142,27 @@ def multi_plot_analog(forecastDate,leadtime,):
     for idx in reversed(xrange(1,11,1)):
         if forecastDate-timedelta(days=(idx-leadtime)) > forecastDate:
             continue
-        all_probs[10-idx,...] = generate_probabilities((forecastDate-timedelta(days=(idx-leadtime))),idx,return_probs=True)
+        try:
+            all_probs[10-idx,...] = generate_probabilities((forecastDate-timedelta(days=(idx-leadtime))),idx,return_probs=True)
+        except:
+            continue
     
     plot_probs_timespan(forecastDate,leadtime,all_probs,image_dir,maxlat,minlat,maxlon,minlon,fcst_minlat,fcst_maxlat,fcst_minlon,fcst_maxlon,radius=80)    
+
+def all_fcsts_analog(forecastDate,):
+    
+    # --- First, set up all the vars from the config file
+    forecast_dir,reforecast_dir,old_forecasts_dir,tordata_dir,cdf_dir,image_dir,\
+        maxlat,minlat,maxlon,minlon,allLats,allLons,fcst_minlat,\
+        fcst_maxlat,fcst_minlon,fcst_maxlon = config_setup()
+        
+    all_probs = np.ones((10,allLats.shape[0],allLons.shape[0]))*-9999.9
+    
+    for idx in xrange(1,11,1):
+        try:
+            all_probs[idx-1,...] = generate_probabilities(forecastDate,idx,return_probs=True)
+        except:
+            continue
+    
+    plot_probs_allfcsts(forecastDate,all_probs,image_dir,maxlat,minlat,maxlon,minlon,fcst_minlat,fcst_maxlat,fcst_minlon,fcst_maxlon,radius=80)
     

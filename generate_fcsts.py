@@ -37,19 +37,21 @@
 
 import sys
 from datetime import datetime
-from retorcast.analog import generate_probabilities,multi_plot_analog
+
+from retorcast.analog import generate_probabilities,evolution_analog,all_fcsts_analog
+
 
 if len(sys.argv) < 3 or len(sys.argv) > 3:
     raise Exception('\nUsage:\n python generate_fcsts.py YYYYMMDD00 lead_time_in_days\n\nTo run all forecasts (Days 1-10) for the current date, use:\n python generate_fcsts.py today all')
-    
+
 # --- parsing command line arguents!
 try:
     lead_time = int(sys.argv[2]) # --- lead time (days)
 except ValueError:
     lead_time = sys.argv[2]
-    
+
 fdate = sys.argv[1] # --- Forecast date
-    
+
 # --- Turning forecast date into datetime object:
 if fdate.lower() == "today":
     fdate = datetime.utcnow()
@@ -62,8 +64,9 @@ try:
     if lead_time.lower() == "all":
         for lead_date in xrange(1,11,1):
             generate_probabilities(fdate,lead_date)
-            #multi_plot_analog(fdate,lead_date)
-            
+            evolution_analog(fdate,lead_date)
+        all_fcsts_analog(fdate)
+
 except AttributeError:
-    #generate_probabilities(fdate,lead_time,use_pct=True)
-    multi_plot_analog(fdate,lead_time)
+    generate_probabilities(fdate,lead_time,use_pct=True)
+    evolution_analog(fdate,lead_time)
