@@ -53,7 +53,8 @@ def generate_probabilities(forecastDate,leadtime,**kwargs):
     members = kwargs.get('members',np.array([10,15,20,25,30,35,40,45,50,75,100,125,150,175,200,500,1000]))
     return_probs = kwargs.get('return_probs',False)
     use_pct = kwargs.get('use_pct',False)
-
+    additive = kwargs.get('additive',False)
+    var_info = kwargs.get(var_info,[{''}])
     td1 = timedelta(days=(leadtime-1),hours=12.)
     td2 = timedelta(days=(leadtime-1),hours=36.)
     print "Initial date: {}".format(forecastDate)
@@ -90,15 +91,24 @@ def generate_probabilities(forecastDate,leadtime,**kwargs):
     # --- Now, let's get us some probabilities!
     if use_pct:
 
-        print "pct!"
+        forecastData = get_bias_corrected_forecast_sigtor(forecastDate,forecast_dir,cdf_dir,first_fhour,last_fhour,\
+            maxlat,minlat,maxlon,minlon)
         quantField = get_pct(training_dates,leadtime,train_fname,predictor_name,reforecast_dir)
         quantFcst = fcst_quants(forecastDate,forecastData,leadtime,reforecast_dir,cdf_dir)
 
         temporary_probs = rank_analog_pct(trainData,forecastData,verifData,quantField,quantFcst,trainData.shape[0],members,members.shape[0],\
             allLats.shape[0],allLons.shape[0],fcst_minlat,fcst_maxlat,fcst_minlon,fcst_maxlon,\
             allLats,allLons,window)
-            
-    if not use_pct:
+
+
+    if additive:
+        forecastData = get_bias_corrected_forecast_sigtor(forecastDate,forecast_dir,cdf_dir,first_fhour,last_fhour,\
+        maxlat,minlat,maxlon,minlon)
+
+
+    else:
+        forecastData = get_bias_corrected_forecast_sigtor(forecastDate,forecast_dir,cdf_dir,first_fhour,last_fhour,\
+            maxlat,minlat,maxlon,minlon)
         temporary_probs = rank_analog(trainData,forecastData,verifData,trainData.shape[0],members,members.shape[0],\
             allLats.shape[0],allLons.shape[0],fcst_minlat,fcst_maxlat,fcst_minlon,fcst_maxlon,\
             allLats,allLons,window)    
